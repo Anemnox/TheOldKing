@@ -2,9 +2,12 @@ import os
 import time
 import random
 import math
+from pathlib import Path
+import pickle
 
 clear_terminal = lambda : os.system('cls' if os.name == 'nt' else 'clear')
 
+SAVE_FILE_NAME = "save_file"
 #
 #   UI variables
 #
@@ -26,12 +29,14 @@ right_width = total_width - left_width
 NAMED = ["Fear", "Regret", "Fulfillment", "Pain"]
 
 story = {
-    "intro": [
+    "intro_part_1": [
         "The journey to the afterlife is difficult with many trials to overcome.\n" +
         "Life and death is connected by a bridge across the world of Oblivion.",
         "Those that stray from the path get consumed by the forgotten.",
         "And you...",
         "You fell from the bridge into the darkness.",
+    ],
+    "intro_part_2": [
         "As you awake, you are greeted by the entrance of a desolate castle.",
         "There is a large door built into the cliff face of a rocky mountain.\n" +
         "The door is slightly ajar and a dim light can be seen from within.",
@@ -45,34 +50,238 @@ story = {
         '"My my, you have most of your soul intact.\n' +
         'Not many visitors are as fortunate," the figure spoke, book in hand.',
         '"Where am I?" You ask.',
-        "Without looking up from its book the figure speaks:\n" +
+        "Without looking up from its book the figure speaks.\n" +
         '"This is Oblivion: the land of those that are forgotten. If you are here,\n' +
         'then you have been forgotten by the world."',
         "Your heart feels heavy... Though, do you even have a heart anymore?\n" +
         '"Can I leave?" you ask.',
         '"Those that leave a mark on the world seem to find a way out," the figure\n' +
-        'replied. "But it will be difficult to leave a mark in the land of the\n ' + 
+        'replied. "But it will be difficult to leave a mark in the land of the\n' + 
         'forgotten."',
         'The figure closed its book and stood up to reveal a towering height.\n' +
-        'The room felt like it had gotten smaller.\n' +
         '"Though, it is not impossible."',
         "The figure leans down towards you. You make out a tarnished crown on its\n" +
-        "head. Its magnificence is apparent despite having a couple missing jewels \n" +
+        "head. Its magnificence is apparent despite having a couple missing jewels\n" +
         '"I will be able to help you once you pass three trials."',
         '"You may take them at your own pace, but I can only save you three times.\n' +
-        'Once you overcome them, I may be able to create a path back to the bridge"',
+        'Once you overcome them, I may be able to create a path back to the bridge."',
         "The figure points up towards the ceiling and you realize that the black\n" +
-        "ceiling was the sky. Briefly, a flash lights up the atmosphere and the shadow\n" +
-        "of a bridge can be seen in the distance.",
-        '"The three doors are on the right lead to each trial," the figure says as it\n' +
+        "ceiling was the sky. Briefly, a flash lights up the atmosphere and the \n" +
+        "shadow of a bridge can be seen in the distance.",
+        '"The three doors on the right lead to each trial," the figure says as it\n' +
         "points to three hallways to the right of the throne.\n" +
-        '"You must be prepared to take each trial."',
-        '"You may find use in my library to prepare for the trials," the figure said.\n' +
-        "It pointed towards the first hallway out of three to the left of the throne.",
-        'The figure sat back down on the throne to read its book again\n' +
+        '"You will want to be prepared to take each trial."',
+        '"The castle is filled with things that may help," the figure said.\n' +
+        "It pointed towards the hallways to the left of the throne.",
+        'The figure sat back down on the throne to read its book again.\n' +
         '"Good luck," the figure said.'
+    ],
+    "meeting_intro_1": [
+        "You stand at the entrance to the trial with hesitation. Slowly, you move to\n" +
+        "open the door. It is heavy and the sound of creaking could be heard as you\n" +
+        "push.",
+        "Inside, you are greeted by a masked figure in a peculiar room..."
+    ],
+    "meeting_intro_2": [
+        "You hesitate again as you open the second door. The room behind is similar\n" + 
+        "to the previous room. Another masked figure greets you inside..."
+    ],
+    "meeting_intro_3": [
+        "You open the final door with a gentle push. As expected, a masked figure\n" +
+        "was attending to its business inside..."
+    ],
+    "initial_meeting": [
+        '"The test is to guess who I am," the figure says. Its amusement\n' +
+        'could be felt from behind its mask.',
+        'You furrow your brows as you contemplate. "Are you God?" you ask.',
+        'The figure starts to chuckle. "We are in a world where even God\n' +
+        'dares not to look. Or maybe even God has forgotten us in this\n' +
+        'place."',
+        '"I shall give you a hint. I am someone who greets you in the\n' +
+        'face death."',
+        "With a gesture resembling a magician sweeping his cape, the figure\n" +
+        "waves its hands outwards in a grand, welcoming motion.\n" + 
+        "The words 'fear', 'regret', and 'fulfillment' appear in your conciousness.",
+    ],
+    "fear_intro": [
+        "A single desk stood at the center of a decorated studio. The walls were\n" +
+        "adorned with beautiful paintings of nature. The masked figure stands near\n" +
+        "the desk, painting on a large canvas.",
+        "Its back is turned towards you as it continues to paint, undisturbed...",
+        "You stand, mesmorized by the details that appeared with each stroke of\n" +
+        "the brush.",
+        "Then, with a single grandious stroke, the figure puts its brush and pallete\n" +
+        "onto the desk and turns towards you.",
+        '"Did the old man send you here?" the figure said impatiently. "He\'s\n' +
+        'always too nosy in other people\'s business. Giving me more work."',
+        'The figure had a short build and a light voice much like a child. Its\n' +
+        'presence, however, exuded charisma and authority.',
+        '"You are the one to give me a trial?" you ask.',
+        '"Of course the old man sends another soul to do a \'trial\'," the figure\n' +
+        'grumbled to itself. "I don\'t know if its me testing you or the old man \n' +
+        'testing my patience."',
+        '"I am indeed the one presenting the trial," the figure announced as it \n' +
+        'found a seat at its desk. "We will start with a simple question."',
+    ],
+    "regret_intro": [
+        "The room was similar to the library, with books filling the shelves near.\n" +
+        "the walls. However, the room was encased in mirrors on all sides, revealing\n" +
+        "the entire space in every direction you turned...",
+        "At the center, the masked figure sat at its desk writing quietly into a\n",
+        "book. The figure looks up and gently sets aside its quill.\n" +
+        '"Welcome," a soft voice spoke from behind the mask.\n' +
+        '"How may I help you?"',
+        "Despite a soft voice, the words left a cold sensation in your body.\n" +
+        '"I am here to take the trial," you respond. "What do I need to do?"',
+        '"Well, I suppose I can give it to you. I hope you are ready, it is \n' +
+        'not a pleasant one," the figure said.'
+    ],
+    "fulfillment_intro": [
+        "Music filled the room as you entered. The masked figure masterfully\n" +
+        "performs a piece on a grand piano at the center of the room.\n" +
+        "The notes soared as warmth filled you and brought upon feelings that\n" +
+        "hadn't been felt since you arrived in this world. The figure plays\n" +
+        "the last note and you are left with a bittersweet feeling.",
+        '"Who are you?" the figure said as it turned towards you.\n' +
+        'You haven\'t thought about your identity. You had been fixated on\n' +
+        'trying to find a way out. All you could say was:\n' +
+        '"I am not sure."',
+        '"Ah, you are similar to me," the figure says warmly. "Did our king\n' +
+        'send you over?"',
+        '"Yes he did. He said that I was to take a trial here."\n' +
+        "You look towards the figure.",
+        '"I am here to give it to you," the figure asserted. The figure puts\n' +
+        'its hands on its knees and positions itself straight at you.' 
+    ],
+    "fear_trial_start": [
+        "Fear reaches up and takes off its mask. The paintings on the wall\n" +
+        "start to melt away as you see a glimpse of a smile before your\n" + 
+        "vision blurs and everything becomes dark.",
+        '"People dislike pain, sometimes to the point where they would do\n' +
+        'anything to escape it. They dislike it so much that they mistake it\n' +
+        'with fear..."',
+        '"But they are mistaken. People fear the mystery, unpredictability,\n' +
+        'the unknown. Anticipation causes fear. Once you experience it, fear\n' +
+        'disappears and becomes forgotten. People live by overcoming fear\n' +
+        'and letting it go."',
+        "In the darkness, you are approached by Fear. Its child-like face,\n" +
+        "unfittingly covered by a stoic expression.\n" +
+        '"What is it that you fear? How will you let it go...?"',
+    ],
+    "regret_trial_start": [
+        "Regret opens its desk drawer to pull out some paper. Quill in hand,\n" +
+        "it pulls off its mask and puts on a pair of glasses. The mirrors seem\n" +
+        "to turn towards you, as if it was forcing you to look at yourself.",
+        '"Death leaves us with regrets. Things that we wanted to do in our,\n' +
+        'lives, things that we wanted to change. But we were never meant to\n' +
+        'bring our regrets with us in the afterlife."',
+        '"Leave them here, let me have them so you can move on without\n' +
+        'looking back..."',
+    ],
+    "fulfillment_trial_start": [
+        'Fulfillment turns back to its piano and plays a single chord. The \n' +
+        'lights turn off and a bright spotlight shines on the spot that you\n' +
+        'are standing on.',
+        '"You are not forgotten if you are remembered. The strongest feeling\n' +
+        'for your existence is the fulfillment you felt during life. Feelings\n' +
+        'that carried you through each day. Feelings that made you wish that\n' +
+        'you wished life had lasted longer..."',
+        '"Even the smallest fulfillments that you may have forgotten will\n' +
+        'help the world remember that you exist..."', 
+    ],
+    "fear_defeated": [
+        'The darkness dissipates as you see Fear, brush in hand, finishing up \n' +
+        'a massive painting on its canvas. "You made it out alive..." Fear said.\n' +
+        '"I\'ve created this piece for you. A sort of... commemoration of your\n' +
+        'success."',
+        'Fear pulls the canvas from the easel and hands it to you. \n' +
+        '"This should help the old man send you on your way."',
+        'Fear takes out a blank canvas from its desk and places it on its easel.\n' +
+        'You leave the room with the painting as Fear starts a new painting \n' +
+        'behind you.',
+    ],
+    "regret_defeated": [
+        "The mirrors around you shatter as Regret sits back down at its desk.\n" +
+        "You hadn't realized that during the trial, Regret had written an entire\n" +
+        "book.",
+        '"With this, your life will not be forgotten and rather recorded in the\n' +
+        'library. The king should be able to guide you to the afterlife once you\n' +
+        'finish the trials."',
+        'You take the book and Regret smiles as it takes off its glasses to put\n' +
+        'on its mask. Regret pulls out its previous book and starts to write\n' +
+        'again. You turn away and leave the room.',
+    ],
+    "fulfillment_defeated": [
+        "As the lights turn back on, Fulfillment's hands leave the piano gracefully.\n" +
+        "The music caused a wave melancholy to fill your heart.",
+        '"What a beautiful piece," Fulfillment sighed. "I am glad to be able to\n' +
+        'listen to your existence."\n' +
+        'Fulfillment jots down notes on a sheet of music and passes it to you.\n' +
+        '"The king will enjoy this one. I wish you luck on your journey."',
+        'Fulfillment turns away, as if swept by a sense of inspiration, begins\n' +
+        'to play another piece.\n' +
+        "You grasp the sheets and leave Fulfillment\'s room."
+    ],
+    "fear_default": [
+        '"Gahhhh, you\'ve already taken up my time with the trial, hurry on to the\n' +
+        'the afterlife!" Fear proclaimed as it continued to paint.'
+    ],
+    "regret_default": [
+        'Regret looks up and greets you. "Welcome again, I am terribly busy at\n' +
+        'the moment but I hope that you are able to pass on."'
+    ],
+    "fulfillment_default": [
+        "Fulfillment sits at its piano, playing a piece that resembled a waltz..."
+    ],
+    "ending": [
+        "The figure welcomes you as you walk up with all three items.",
+        '"I see that you were able to find yourself within this madness.\n' +
+        'What a nice addition to my collection," the figure said.',
+        "It examined each work carefully and smiled as it closed its eyes,\n" +
+        "imagining the life that you have lived.",
+        '"I believe that you will be able to find your own way out," the\n' +
+        'figure said. And as if the world had been listening, a path appeared\n' +
+        'behind the throne, upwards, towards the bridge in the sky.',
+        '"How did you make that path?" you ask.\n\n' +
+        '"When the world remembers, those that don\'t belong are given a path,"\n' +
+        'the figure says.',
+        '"How did the world remember me when I have been forgotten?"\n\n' +
+        '"You have not forgotten yourself. !nd I, along with the other three,\n' +
+        'have just reminded the world that you are not forgotten."',
+        'The figure takes the book, the painting, and the music sheets and\n' +
+        'walks towards the library.\n' +
+        '"It is time for you to leave, I will keep these safe for you."',
+        '"What lies ahead for me?"\n\n' +
+        '"I do not know but you will return to the cycle of the world.\n' +
+        'Death after life, Life after death. Go on now, I give you my\n' +
+        'blessings."',
+        'The figure disappears into the library and you are left alone with\n' +
+        'the glowing path to the afterlife.',
+        'A tinge of pain could be felt, but you look away towards the path.',
+        'You take a single step. Another step. And another as you climb up into\n' +
+        'the sky...'
+    ],
+    "tutorial": [
+        "You are battling an opponent...\n\n" +
+        "You are given 5 cards in your hand and can play up to 3 out of\n" +
+        "the 5 cards.",
+        "Each card is a specific type:\n\n" +
+        f"{RED}- Attack\n" +
+        f"{YELLOW}- Defend\n" +
+        f"{BLUE}- Buff{RESET}\n",
+        f"\n{RED}Attack{RESET} beats {BLUE}Buff{RESET}...\n",
+        f"\n{BLUE}Buff{RESET} beats {YELLOW}Defend{RESET}...\n",
+        f"And {YELLOW}Defend{RESET} beats {BLUE}Attack{RESET}...\n",
+        "The Defense stat will take damage before your souls decrease and\n" +
+        "the buff stat will increase the strength of your card effects.",
+        "The winning card will have its effect doubled,\n" +
+        "The losing card will have its effect halved,\n" +
+        "And a draw will provide no change in effect.",
+        "To play the cards in order, type in the card number\n" + 
+        "from first to last with spaces in between.",
     ]
 }
+
 
 endings = {
     "leave_castle": [
@@ -80,7 +289,11 @@ endings = {
         "You walk away from the door, towards the bottom of the hill that the\n" +
         "castle stood on.",
         "Suddenly a shadow looms over your shoulders...",
-        "Without warning, everything seemed to disappear.",
+    ],
+    "death": [
+        "Everything becomes dark as your soul seems to drain away.\n" +
+        "You close your eyes as fatigue takes over your body and\n" +
+        "you disappear into oblivion..."
     ]
 }
 
@@ -243,8 +456,21 @@ class Book:
 #
 #   Progression Information
 #
+game_over = False
 books_bought = 0
 current_books = []
+trial_count = 1
+
+progression_flags = set()
+# List of flags:
+# - initial_meeting
+# - fear_meeting
+# - regret_meeting
+# - fulfillment_meeting
+# - fear_defeated
+# - regret_defeated
+# - fulfillment_defeated
+# - tutorial_completed
 
 #
 #   Player Information
@@ -255,6 +481,11 @@ player = None
 
 
 ###### Text Mod #####
+def action_name_to_index(text):
+    modded = text.lower()
+    modded = modded.replace(" ", "_")
+    return modded
+
 def format_grammar(text: str, source: Character=None, target: Character=None):
     n1 = source.name if source != None else ""
     n2 = target.name if target != None else ""
@@ -484,6 +715,41 @@ ENEMIES = {
     }
 }
 
+BOSSES = {
+    "Fear": {
+        "moves": [
+            "attack", "attack", "intimidate",
+            "life_steal", "life_steal",
+            "defend", "defend", "taunt",
+            "buff", "curse", "curse"
+            ],
+        "values": [3, 3, 3, 4, 4, 2, 2, 3, 3, 3, 3],
+        "souls": 50,
+        "phase_two": ["decimate", "decimate"]
+    },
+    "Regret": {
+        "moves": [
+            "attack", "attack", "intimidate",
+            "defend", "defend", "taunt",
+            "shield_bash", "shield_bash",
+            "buff", "focus", "curse"
+            ],
+        "values": [2, 2, 3, 3, 3, 3, 4, 4, 3, 3, 3],
+        "souls": 50,
+        "phase_two": ["overcome", "overcome"]
+    },
+    "Fulfillment": {
+        "moves": [
+            "attack", "attack", "attack",
+            "defend", "defend", "shield_bash", "shield_bash",
+            "buff", "buff", "focus", "focus"
+            ],
+        "values": [3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 3],
+        "souls": 50,
+        "phase_two": ["enlighten", "enlighten"]
+    }
+}
+
 def construct_action(name, power):
     data = MOVE_SET[name]
 
@@ -523,17 +789,13 @@ def generate_book(base_power: int):
     return book
 
 def get_base_cost(action: Action):
-    cost = 5 * action.value
+    cost = 2 * action.value
     if action.rarity == "rare":
-        cost *= cost * cost
+        cost *= 5
     elif action.rarity == "uncommon":
-        cost *= 3
+        cost *= 2
 
     return cost
-
-# Get Upgrade Cost
-
-# Get Sell Cost
 
 
 def initialize_character():
@@ -547,16 +809,16 @@ def initialize_character():
 
 
 # Enemies
-def generate_enemy(name, enemy_level: int):
+def generate_enemy(name, data, enemy_level: int, shuffle=True):
     enemy = Character(name)
     
-    data = ENEMIES[name]
-    random.shuffle(data["moves"])
-    random.shuffle(data["values"])
+    if shuffle:
+        random.shuffle(data["moves"])
     for i in range(len(data["moves"])):
-        a = construct_action(data['moves'][i], enemy_level - 1 + data["values"][i])
+        a = construct_action(data['moves'][i], enemy_level * data["values"][i])
         enemy.deck.append(a)
     enemy.souls = data["souls"] * enemy_level
+    random.shuffle(enemy.deck)
 
     return enemy
 
@@ -581,17 +843,13 @@ def get_loot(enemy: Character):
     time.sleep(TIME_INTERVAL)
     player.heal(soul_count)
     print("===========================================================================")
+    print("-- Press enter to continue --")
     input()
 
 
 def play_scene(scene_contents):
     for text in scene_contents:
-        clear_terminal()
-        print("===========================================================================")
-        print(text)
-        print("===========================================================================")
-        print("-- Press enter to continue --")
-        input()
+        type_statement(text)
 
 def type_statement(statement):
     clear_terminal()
@@ -602,12 +860,16 @@ def type_statement(statement):
     input()
 
 def intro():
-    play_scene(story["intro"])
+    play_scene(story["intro_part_1"])
+    title_screen()
+    if load_game():
+        return
+    play_scene(story["intro_part_2"])
     if decision_one():
         play_scene(story["throne_room_intro"])
     else:
         play_scene(endings["leave_castle"])
-        game_over()
+        run_game_over()
 
 
 #   Player UI
@@ -649,15 +911,34 @@ def print_player_deck():
 # Three Trials
 # Fear, Regrets, Fulfillment, (Pain)
 
+def tutorial():
+    response = None
+    progression_flags.add("tutorial_completed")
+    while(True):
+        clear_terminal()
+        print_player_stats()
+        print("===========================================================================")
+        print("Would you like to view the tutorial?")
+        print("(y/n)")
+        print("===========================================================================")
+        response = input("->").lower()
+        if response == "n":
+            return
+        elif response == "y":
+            play_scene(story["tutorial"])
+            return
+
 
 def start_battle(enemy: Character):
     abandon_fight = False
+    if "tutorial_completed" not in progression_flags:
+        tutorial()
     while(not enemy.is_dead() and not player.is_dead()):
         enemy.reset_turn()
         player.reset_turn()
         enemy.draw_hand()
         player.draw_hand()
-        enemy_moves = AI.get_enemy_turn(enemy=enemy)
+        enemy_moves = AI.get_enemy_turn(enemy=enemy, player=player)
         your_moves = None
         card_order = None
         while(your_moves == None):
@@ -777,14 +1058,18 @@ def check_win(a1: Action, a2: Action):
 #   Throne Room!
 #
 def throne_room():
+    global game_over, lives
     response = None
     while (True):
+        if game_over:
+            return
         if player.is_dead():
+            lives -= 1
             if lives > 0:
                 player_gets_saved()
                 player.souls = 5
             else:
-                game_over()
+                run_game_over()
                 return
         clear_terminal()
         print_player_stats()
@@ -798,14 +1083,15 @@ def throne_room():
         print("\t3: Enter the second hallway to the left")        # The Well of Forgiveness   (Removing Perks?)
         print("\t4: Enter the third hallway to the left")         # The Grand Hallway         (Fighting smaller mobs to gather resources)
         print("\t5: Talk to the figure")
+        print("\t6: Save Progress")
         print("\tE: Exit")
         print("===========================================================================")
-        if response != None and response not in ['1', '2', '3', '4', '5', 'e']:
+        if response != None and response not in ['1', '2', '3', '4', '5', '6' 'e']:
             print(response + " is not a valid choice")
         response = input("->").lower()
         match response:
             case "1":
-                pass
+                trial_entrance()
             case "2":
                 library()
             case "3":
@@ -813,10 +1099,151 @@ def throne_room():
             case "4":
                 the_lost_souls()
             case "5":
-                pass
+                if trial_count > 3:
+                    play_scene(story["ending"])
+                    title_screen(True)
+                    game_over = True
+                else:
+                    old_king_dialogue()
+            case "6":
+                save_game()
             case "e":
                 return
 
+
+def old_king_dialogue():
+    clear_terminal()
+    print("===========================================================================")
+    if trial_count > 1:
+        print(f'"You have only completed {trial_count - 1} trials.')
+    else:
+        print('"You must complete all of the trials.')
+    print('Come back when you have finished all three..."')
+    print("===========================================================================")
+    print("-- Press enter to continue --")
+    input()
+
+#
+#   Trials
+#
+def trial_entrance():
+    global game_over
+    response = None
+    while (True):
+        if player.is_dead() or game_over:
+            return
+        clear_terminal()
+        print_player_stats()
+        print("===========================================================================")
+        print(f"{BRIGHT_BLUE}The Trials{RESET}".center(total_width, ' '))
+        print("The right side of the throne room was decorated with three doors. The first")
+        print("door was dark red. The second was a dull grey. The last door was the most  ")
+        print("colorful: a light, but strong, shade of blue.")
+        print()
+        print("What would you like to do?")
+        print("\t1: Go through the Red Door")
+        print("\t2: Go through the Grey Door")
+        print("\t3: Go through the Blue Door")
+        print("\tE: Look away")
+        print("===========================================================================")
+        if response not in ['1', '2', '3', 'e'] and response != None:
+            print(str(response) + " is not a valid choice")
+        response = input("->").lower()
+        match response:
+            case "1":
+                start_trial("Fear")
+            case "2":
+                start_trial("Regret")
+            case "3":
+                start_trial("Fulfillment")
+            case "e":
+                return
+
+
+def start_trial(trial_name: str):
+    global trial_count
+    trial_index = trial_name.lower()
+    if f"{trial_index}_defeated" in progression_flags:
+        play_scene(story[f"{trial_index}_default"])
+        return
+    if f"{trial_index}_meeting" not in progression_flags:
+        progression_flags.add(f"{trial_index}_meeting")
+        opened_doors = get_number_of_doors_opened()
+        play_scene(story[f"meeting_intro_{opened_doors}"])
+        play_scene(story[f"{trial_index}_intro"])
+    else:
+        pass
+    guess = guess_identity(trial_name)
+    guess_response(trial_name, guess)
+    play_scene(story[f'{trial_index}_trial_start'])
+    # if the guess is incorrect, the game starts the boss starts with a buff.
+    boss = generate_enemy(trial_name, BOSSES[trial_name], trial_count, shuffle=False)
+    if not guess:
+        boss.defense += 10 * trial_count
+    
+    start_battle(boss)
+    if boss.is_dead():
+        play_scene(story[f'{trial_index}_defeated'])
+        progression_flags.add(f'{trial_index}_defeated')
+        trial_count += 1
+        get_loot(boss)
+
+
+IDENTITIES = ["Fear", "Regret", "Fullfillment"]
+def guess_identity(trial_name: str):
+    if "first_meeting_with_trials" not in progression_flags:
+        play_scene(story["initial_meeting"])
+        progression_flags.add("first_meeting_with_trials")
+    response = None
+    random.shuffle(IDENTITIES)
+    while (True):
+        clear_terminal()
+        print("===========================================================================")
+        print("The figure looks in your direction, revealing no emotion behind its mask.")
+        print('"Who am I?"')
+        print()
+        for i in range(len(IDENTITIES)):
+            print(f"{i + 1}: {IDENTITIES[i]}")
+        print("===========================================================================")
+        if response not in ['1', '2', '3'] and response != None:
+            print(str(response) + " is not a valid choice")
+        response = input("->").lower()
+        if response in ['1', '2', '3']:
+            guess = int(response) - 1
+            return IDENTITIES[guess] == trial_name
+
+
+def guess_response(trial_name: str, correct: bool=False):
+    clear_terminal()
+    if not correct:
+        print("===========================================================================")
+        print(f'"Unfortunately, you are incorrect," the figure says. "I am {trial_name}."')
+        print(f"({trial_name} starts off with {10 * trial_count} defense)")
+        print("===========================================================================")
+    else:
+        temp = "1st"
+        if trial_count == 2:
+            temp = "2nd"
+        elif trial_count == 3:
+            temp = "3rd"
+        print("===========================================================================")
+        print(f'"I am indeed {trial_name}." the figure chuckles.')
+        print(f'"Welcome to the {temp} trial by the king of Oblivion.')
+        print("===========================================================================")
+    print("-- Press enter to continue --")
+    input()
+
+
+
+def get_number_of_doors_opened():
+    count = 0
+    if "fear_meeting" in progression_flags:
+        count += 1
+    if "regret_meeting" in progression_flags:
+        count += 1
+    if "fulfillment_meeting" in progression_flags:
+        count += 1
+    return count
 
 #
 #   Library
@@ -835,12 +1262,9 @@ def library():
         print("What would you like to do?")
         print("\t1: Look into the mirror")                              # Check Stats
         print("\t2: Browse through the shelves of books")               # Buy Cards in the shop
-        print("\t3: Walk towards the pile of books")                    # Gacha Cards
-        print("\t4: ")                                                  # Perks?
-        print("\t5: Talk to the figure")
         print("\tE: Return to the throne room")
         print("===========================================================================")
-        if response not in ['1', '2', '3', '4', '5', 'e'] and response != None:
+        if response not in ['1', '2', 'e'] and response != None:
             print(str(response) + " is not a valid choice")
         response = input("->").lower()
         match response:
@@ -852,13 +1276,7 @@ def library():
                 input()
             case "2":
                 shop()
-            case "3":
-                pass
-            case "4":
-                pass
-            case "5":
-                pass
-            case "e" | "E":
+            case "e":
                 return
 
 
@@ -984,24 +1402,18 @@ def the_study():
         print("clean parchment paper with a quill and ink on top of the desk.")
         print()
         print("What would you like to do?")
-        print("\t1: Write out your thoughts.")                   # Sell Cards
-        print("\t2: ")
+        print("\t1: Write the things you learned")                  # Upgrade Cards
+        print("\t2: Write the things you regret")                   # Sell Cards
         print("\tE: Return to the throne room.")
         print("===========================================================================")
-        if response not in ['1', '2', '3', '4', '5', 'e'] and response != None:
+        if response not in ['1', '2', 'e'] and response != None:
             print(str(response) + " is not a valid choice")
         response = input("->").lower()
         match response:
             case "1":
-                discard_cards()
+                upgrade_cards()
             case "2":
-                pass
-            case "3":
-                pass
-            case "4":
-                pass
-            case "5":
-                pass
+                discard_cards()
             case "e":
                 break
 
@@ -1080,20 +1492,106 @@ def discard_card_count(card, curr_count, max_count):
                     time.sleep(dt)
                     print(f"You write away a thought... (\"{card.name} {card.value}\" has been removed)")
                     time.sleep(dt)
-                    player.heal(card.value * 5)
+                    player.heal(int(get_base_cost(card) / 2))
                 print("===========================================================================")
                 print("-- Press enter to continue --")
                 input()
             break   
 
 
+def upgrade_cards():
+    response = None
+    page_index = 0
+    while (True):
+        deck_map = player.get_deck_map()
+        card_keys = list(deck_map.keys())
+        discard_count = len(player.deck) - MIN_DECK
+        clear_terminal()
+        print_player_stats()
+        print("===========================================================================")
+        print("A blank sheet of paper is laid in front of you.")
+        print("Quill in hand, you ponder what to write onto the paper...")
+        print()
+        print("To upgrade cards, you require a pair.")
+        print(f"Select the cards to upgrade. You may upgrade up to {discard_count} cards")
+        for i in range(5):
+            d = page_index * 5 + i
+            if d < len(card_keys):
+                card = card_keys[d]
+                print(f"\t{i + 1}: {str(card)} x {deck_map[card]} cards ")
+        if page_index > 0:
+            print("\tB: Go back one page")
+        if (page_index + 1) * 5 < len(card_keys):
+            print("\tF: Go forward one page.")
+        print("\tE. Return to the throne room.")
+        print("===========================================================================")
+        if response not in ['1', '2', '3', '4', '5', 'e', 'b', 'f'] and response != None:
+            print(str(response) + " is not a valid choice")
+        response = input("->").lower()
+        if response in ['1', '2', '3', '4', '5']:
+            card = card_keys[page_index * 5 + (int(response) - 1)]
+            if discard_count < 1 or deck_map[card] < 2:
+                type_statement("You do not have enough cards.")
+                continue
+            else:
+                upgrade_card_count(card, deck_map[card], discard_count)
+        else:
+            match response:
+                case "b":
+                    if page_index > 0:
+                        page_index -= 1
+                case "f":
+                    if (page_index + 1) * 5 < len(card_keys):
+                        page_index += 1
+                case "e":
+                    return
+
+
+def upgrade_card_count(card, curr_count, max_count):
+    user_input = None
+    max_upgrades = int(curr_count / 2)
+    while (True):
+        clear_terminal()
+        print("===========================================================================")
+        print(f"How many cards would you like to upgrade? ( ? / {max_upgrades} )")
+        print("===========================================================================")
+        if user_input != None:
+            print(user_input + " is not a valid input.")
+        user_input = input("->")
+        if can_convert_to_int(user_input):
+            num_upgrades = int(user_input)
+            if num_upgrades > max_count:
+                type_statement("Unable to upgrade that many cards.")
+            elif num_upgrades > max_upgrades:
+                type_statement("You do not have enough cards.")
+            else:
+                removed = player.remove_card(card, int(num_upgrades * 2))
+                dt = (TIME_INTERVAL * 1.5) / (1 if removed < 1 else removed)
+                dt = min(TIME_INTERVAL, dt)
+                clear_terminal()
+                print("===========================================================================")
+                if removed == 0:
+                    print("You leave the sheet of parchment paper blank.")
+                for i in range(num_upgrades):
+                    new_card = construct_action(action_name_to_index(card.name), card.value + 1)
+                    player.deck.append(new_card)
+                    time.sleep(dt)
+                    print(f"You write a profound thought (\"{card.name} {card.value + 1}\" has been obtained)")
+                    time.sleep(dt)
+                print("===========================================================================")
+                print("-- Press enter to continue --")
+                input()
+            break   
+
 #
 #
 #
 def the_lost_souls():
-    global lives
+    global lives, game_over
     response = None
     while (True):
+        if player.is_dead() or game_over:
+            return
         clear_terminal()
         print_player_stats()
         print("===========================================================================")
@@ -1114,17 +1612,19 @@ def the_lost_souls():
             case "1":
                 dungeon()
             case "2":
+                type_statement("You step into the room and the walls seem to disappear...")
+                explore(5)
                 pass
             case "e":
                 return
-        if player.is_dead():
-            lives -= 1
-            return
 
 
 def dungeon():
+    global game_over
     response = None
     while (True):
+        if player.is_dead() or game_over:
+            return
         clear_terminal()
         print_player_stats()
         print("===========================================================================")
@@ -1141,15 +1641,15 @@ def dungeon():
             return
         elif response in ['1', '2', '3']:
             explore(int(response))
-            if player.is_dead():
-                return
 
 
-LEVEL_VALS = [0, 1, 3, 10, 20]
+LEVEL_VALS = [0, 1, 2, 3, 5, 20, 30]
 LEVEL_ENEMY = {
     1: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"],
     2: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"],
-    3: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"]
+    3: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"],
+    4: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"],
+    5: ["Small Soul", "Cloaked Figure", "Mineral Humanoid", "Shrieking Soul"],
 }
 def explore(level):
     diff = LEVEL_VALS[level + 1] - LEVEL_VALS[level]
@@ -1157,7 +1657,9 @@ def explore(level):
     eq = int(math.log(temp, 2))
     level_scale = LEVEL_VALS[level] + eq
 
-    enemy = generate_enemy(random.choice(LEVEL_ENEMY[level]), level_scale)
+    name = random.choice(LEVEL_ENEMY[level])
+
+    enemy = generate_enemy(name, ENEMIES[name], level_scale)
 
     print_player_stats()
     type_statement(
@@ -1188,7 +1690,7 @@ def player_gets_saved():
         "for air."
     )
     type_statement(
-        '"You were almost returned to the essence of oblivion... Welcome back,"\n' +
+        '"You almost disappeared into the essence of Oblivion... Welcome back,"\n' +
         "a voice said.\n" +
         "Looking around, you were back at the throne room and see the figure \n" + 
         "back at its throne.\n" +
@@ -1198,9 +1700,26 @@ def player_gets_saved():
     type_statement("The figure picks up its usual book and starts to read again.")
 
 
+def run_game_over():
+    global game_over
+    game_over = True
+    play_scene(endings["death"])
 
-def game_over():
-    pass
+
+def title_screen(ended=False):
+    clear_terminal()
+    print("==========================================================================")
+    print()
+    print()
+    print("------------------------------THE-OLD-KING--------------------------------")
+    print()
+    if ended:
+        print("                           THANKS FOR PLAYING")
+    else:
+        print()
+    print("==========================================================================")
+    print("                      -- Press enter to continue --                       ")
+    input()
 
 
 def decision_one():
@@ -1220,13 +1739,115 @@ def decision_one():
         elif response == "2":
             return False
 
-#
-#
-#
 
+class SaveObject:
+    def __init__(self):
+        self.player = player
+        self.books_bought = books_bought
+        self.current_books = current_books
+        self.trial_count = trial_count
+        self.progression_flags = progression_flags
+        self.lives = lives
+
+
+def load_game(show_check=False):
+    pattern = f'{SAVE_FILE_NAME}*.pkl'
+    matches = list(Path('.').glob(pattern))
+
+    if not matches:
+        if show_check:
+            clear_terminal()
+            print("Save data did not exist...")
+            input("-Enter to continue-")
+        return False
+    response = None
+    while (True):
+        clear_terminal()
+        print("==========================================================================")
+        print("A load file has been detected. Would you like to load the game?")
+        for i in range(3):
+            if Path(f'{SAVE_FILE_NAME}{i+1}.pkl').exists():
+                print(f"\t{i + 1}. Game Save")
+            else:
+                print(f"\t{i + 1}. Empty")
+        print("\t4. No")
+        print("==========================================================================")
+        response = input("->")
+        if response in ["1", "2", "3"]:
+            if load(response):
+                return True
+        elif response == "4":
+            return False
+
+
+def load(num):
+    global player, books_bought, current_books, trial_count, progression_flags, lives
+    if not Path(f'{SAVE_FILE_NAME}{num}.pkl').exists():
+        clear_terminal()
+        print("Save data did not exist...")
+        input("-Enter to continue-")
+        return False
+    with open(f"{SAVE_FILE_NAME}{num}.pkl", 'rb') as file:
+        save_data: SaveObject = pickle.load(file)
+        
+        player = save_data.player
+        books_bought = save_data.books_bought
+        current_books = save_data.current_books
+        trial_count = save_data.trial_count
+        progression_flags = save_data.progression_flags
+        lives = save_data.lives
+
+    return True
+
+
+def save_game():
+    response = None
+    while (response not in ["1", "2"]):
+        clear_terminal()
+        print("==========================================================================")
+        print("Would you like to save the game?")
+        for i in range(3):
+            if Path(f'{SAVE_FILE_NAME}{i+1}.pkl').exists():
+                print(f"\t{i + 1}. Game Save")
+            else:
+                print(f"\t{i + 1}. Empty")
+        print("\t4. No")
+        print("==========================================================================")
+        response = input("->")
+        if response in ["1", "2", "3"]:
+            if save(response):
+                return
+        elif response == "4":
+            return
+
+
+def save(num):
+    if Path(f'{SAVE_FILE_NAME}{num}.pkl').exists():
+        response = None
+        while (response not in ["1", "2"]):
+            clear_terminal()
+            print("==========================================================================")
+            print("Your data is getting overwritten. Are you sure?")
+            print("\t1. Yes")
+            print("\t2. No")
+            print("==========================================================================")
+            if response != None:
+                print("Enter '1' or '2'")
+            response = input("->")
+            if response == "2":
+                return False
+            elif response == "1":
+                break
+    with open(f"{SAVE_FILE_NAME}{num}.pkl", 'wb') as file:
+        pickle.dump(SaveObject(), file)
+    return True
+
+#
+#
+#
 class AI:
     @staticmethod
-    def get_enemy_turn(enemy: Character):
+    def get_enemy_turn(enemy: Character, player: Character):
         enemy.draw_hand()
         action_i = list(range(enemy.action_count))
         return enemy.play_cards(action_i)
@@ -1256,4 +1877,4 @@ if __name__ == "__main__":
 
     intro()
     throne_room()
-    
+    save_game()
