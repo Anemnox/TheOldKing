@@ -4,7 +4,7 @@ A simple Python game.
 
 Run using Python 3.11:
 ```
-Python main.py
+python main.py
 ```
 
 Creates save files in the current directory.
